@@ -6,7 +6,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// VAPID keys should be set in your Render Environment Variables
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 
@@ -32,7 +31,6 @@ app.post("/api/broadcast", async (req, res) => {
     return res.status(400).json({ error: "No subscribers provided." });
   }
 
-  // --- UPDATED PATHS FOR ROOT DOMAIN ---
   const payload = JSON.stringify({
     title: title || "Foodies Point 🍛",
     body: message || "Today's live menu is up!",
@@ -40,17 +38,24 @@ app.post("/api/broadcast", async (req, res) => {
     badge: "/icon.png"
   });
 
+  // HIGH URGENCY OPTIONS - Wakes up sleeping/backgrounded phones
+  const requestOptions = {
+    TTL: 86400, // 24 hours
+    headers: {
+      Urgency: "high"
+    }
+  };
+
   let successCount = 0;
   let failureCount = 0;
   const expiredEndpoints = [];
 
   const sendPromises = subscriptions.map(async (sub) => {
     try {
-      await webPush.sendNotification(sub, payload);
+      await webPush.sendNotification(sub, payload, requestOptions);
       successCount++;
     } catch (error) {
       failureCount++;
-      // If the subscription is no longer valid, flag it for removal
       if (error.statusCode === 404 || error.statusCode === 410) {
         expiredEndpoints.push(sub.endpoint);
       }
@@ -59,7 +64,7 @@ app.post("/api/broadcast", async (req, res) => {
 
   await Promise.all(sendPromises);
 
-  console.log(`[Broadcast] Delivered: ${successCount} | Failed: ${failureCount}`);
+  console.log(`[Push API] Delivered: ${successCount} | Failed: ${failureCount}`);
 
   res.status(200).json({
     success: true,
