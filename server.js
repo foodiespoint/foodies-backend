@@ -38,12 +38,11 @@ app.post("/api/broadcast", async (req, res) => {
     badge: "/icon.png"
   });
 
-  // HIGH URGENCY OPTIONS - Wakes up sleeping/backgrounded phones
+  // FIX: For web-push to properly flag FCM to wake the device from Doze Mode, 
+  // 'urgency' MUST be a top-level parameter, NOT nested inside headers.
   const requestOptions = {
     TTL: 86400, // 24 hours
-    headers: {
-      Urgency: "high"
-    }
+    urgency: "high" 
   };
 
   let successCount = 0;
